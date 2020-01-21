@@ -26,7 +26,6 @@ import alluxio.grpc.table.Layout;
 import alluxio.grpc.table.LongColumnStatsData;
 import alluxio.grpc.table.StringColumnStatsData;
 import alluxio.grpc.table.layout.hive.PartitionInfo;
-import alluxio.shaded.client.com.google.protobuf.InvalidProtocolBufferException;
 import com.facebook.presto.hive.HiveBucketProperty;
 import com.facebook.presto.hive.HiveType;
 import com.facebook.presto.hive.metastore.Column;
@@ -120,7 +119,7 @@ public class AlluxioProtoUtils
                     .setSerdeParameters(storage.getStorageFormat().getSerdelibParametersMap());
             return builder.build();
         }
-        catch (InvalidProtocolBufferException e) {
+        catch (Exception e) {
             throw new IllegalArgumentException("Failed to extract PartitionInfo from TableInfo", e);
         }
     }
@@ -232,7 +231,7 @@ public class AlluxioProtoUtils
         try {
             return alluxio.table.ProtoUtils.extractHiveLayout(part);
         }
-        catch (InvalidProtocolBufferException e) {
+        catch (Exception e) {
             throw new IllegalArgumentException("Failed to extract PartitionInfo", e);
         }
     }
