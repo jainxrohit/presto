@@ -122,6 +122,8 @@ public class HivePageSourceProvider
 
         Configuration configuration = hdfsEnvironment.getConfiguration(new HdfsContext(session, hiveSplit.getDatabase(), hiveSplit.getTable()), path);
 
+        System.err.println("createPageSource: path=" + path);
+
         if (hiveLayout.isPushdownFilterEnabled()) {
             Optional<ConnectorPageSource> selectivePageSource = createSelectivePageSource(selectivePageSourceFactories, configuration, session, hiveSplit, hiveLayout, selectedColumns, hiveStorageTimeZone, typeManager, optimizedRowExpressionCache);
             if (selectivePageSource.isPresent()) {
