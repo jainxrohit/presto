@@ -164,7 +164,7 @@ public final class RaptorQueryRunner
     {
         Logging.initialize();
         Map<String, String> properties = ImmutableMap.of("http-server.http.port", "8080");
-        DistributedQueryRunner queryRunner = createRaptorQueryRunner(properties, true, false, false);
+        DistributedQueryRunner queryRunner = createRaptorQueryRunner(properties, true, true, false);
         Thread.sleep(10);
         Logger log = Logger.get(RaptorQueryRunner.class);
         log.info("======== SERVER STARTED ========");
