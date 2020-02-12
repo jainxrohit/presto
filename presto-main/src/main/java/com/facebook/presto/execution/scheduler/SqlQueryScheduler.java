@@ -484,7 +484,7 @@ public class SqlQueryScheduler
             if (isInternalSystemConnector(connectorId)) {
                 nodeSelector = nodeScheduler.createLegacyNodeSelector(null, maxTasksPerStage);
             }
-            else if (session.getSource().map(source -> source.contains("unidash")).orElse(false)) {
+            else if (session.getSource().map(source -> source.contains("unidash") || source.contains("presto-cli")).orElse(false)) {
                 nodeSelector = nodeScheduler.createNodeSelector(connectorId, maxTasksPerStage);
             }
             else {
