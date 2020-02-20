@@ -63,7 +63,7 @@
         <dep.asm.version>6.2.1</dep.asm.version>
         <dep.gcs.version>1.9.17</dep.gcs.version>
         <dep.kafka.version>2.3.1</dep.kafka.version>
-        <dep.alluxio.version>2.2.0-SNAPSHOT</dep.alluxio.version>
+        <dep.alluxio.version>2.3.0-SNAPSHOT</dep.alluxio.version>
         <!--
           America/Bahia_Banderas has:
            - offset change since 1970 (offset Jan 1970: -08:00, offset Jan 2018: -06:00)
