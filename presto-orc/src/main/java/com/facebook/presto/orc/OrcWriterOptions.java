@@ -57,7 +57,7 @@ public class OrcWriterOptions
                 DEFAULT_MAX_COMPRESSION_BUFFER_SIZE);
     }
 
-    private OrcWriterOptions(
+     private OrcWriterOptions(
             DataSize stripeMinSize,
             DataSize stripeMaxSize,
             int stripeMaxRowCount,

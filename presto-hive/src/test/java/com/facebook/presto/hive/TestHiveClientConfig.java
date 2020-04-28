@@ -164,6 +164,7 @@ public class TestHiveClientConfig
                 .put("hive.storage-format", "SEQUENCEFILE")
                 .put("hive.compression-codec", "NONE")
                 .put("hive.orc-compression-codec", "ZSTD")
+                .put("hive.zstd-compression-level", "7")
                 .put("hive.respect-table-format", "false")
                 .put("hive.immutable-partitions", "true")
                 .put("hive.insert-overwrite-immutable-partitions-enabled", "true")
