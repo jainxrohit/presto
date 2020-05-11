@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.hive;
 
+import com.facebook.presto.cache.CacheConfig;
 import com.facebook.presto.orc.OrcWriteValidation.OrcWriteValidationMode;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.PrestoException;
@@ -99,6 +100,7 @@ public final class HiveSessionProperties
     public static final String MAX_BUCKETS_FOR_GROUPED_EXECUTION = "max_buckets_for_grouped_execution";
     public static final String OFFLINE_DATA_DEBUG_MODE_ENABLED = "offline_data_debug_mode_enabled";
     public static final String FAIL_FAST_ON_INSERT_INTO_IMMUTABLE_PARTITIONS_ENABLED = "fail_fast_on_insert_into_immutable_partitions_enabled";
+    public static final String DATA_CACHING_ENABLED = "data_caching_enabled";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -121,7 +123,11 @@ public final class HiveSessionProperties
     }
 
     @Inject
-    public HiveSessionProperties(HiveClientConfig hiveClientConfig, OrcFileWriterConfig orcFileWriterConfig, ParquetFileWriterConfig parquetFileWriterConfig)
+    public HiveSessionProperties(
+            HiveClientConfig hiveClientConfig,
+            OrcFileWriterConfig orcFileWriterConfig,
+            ParquetFileWriterConfig parquetFileWriterConfig,
+            CacheConfig cacheConfig)
     {
         sessionProperties = ImmutableList.of(
                 booleanProperty(
@@ -444,7 +450,12 @@ public final class HiveSessionProperties
                         FAIL_FAST_ON_INSERT_INTO_IMMUTABLE_PARTITIONS_ENABLED,
                         "Fail fast when trying to insert into an immutable partition. Increases load on the metastore",
                         hiveClientConfig.isFailFastOnInsertIntoImmutablePartitionsEnabled(),
-                        false));
+                        false),
+                booleanProperty(
+                        DATA_CACHING_ENABLED,
+                        "Enable data caching",
+                        cacheConfig.isCachingEnabled(),
+                        true)); 
     }
 
     public List<PropertyMetadata<?>> getSessionProperties()
@@ -773,5 +784,10 @@ public final class HiveSessionProperties
     public static boolean isFailFastOnInsertIntoImmutablePartitionsEnabled(ConnectorSession session)
     {
         return session.getProperty(FAIL_FAST_ON_INSERT_INTO_IMMUTABLE_PARTITIONS_ENABLED, Boolean.class);
+    }
+
+    public static boolean isCachingEnabled(ConnectorSession session)
+    {
+        return session.getProperty(DATA_CACHING_ENABLED, Boolean.class);
     }
 }

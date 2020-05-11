@@ -32,7 +32,7 @@ public class TestHiveSessionProperties
                 new HiveSessionProperties(
                         new HiveClientConfig(),
                         new OrcFileWriterConfig(),
-                        new ParquetFileWriterConfig()).getSessionProperties());
+                        new ParquetFileWriterConfig(), ).getSessionProperties());
         assertEquals(getNodeSelectionStrategy(connectorSession), NO_PREFERENCE);
     }
 
@@ -43,7 +43,7 @@ public class TestHiveSessionProperties
                 new HiveSessionProperties(
                         new HiveClientConfig().setNodeSelectionStrategy(NodeSelectionStrategy.valueOf("NO_PREFERENCE")),
                         new OrcFileWriterConfig(),
-                        new ParquetFileWriterConfig()).getSessionProperties());
+                        new ParquetFileWriterConfig(), ).getSessionProperties());
         assertEquals(getNodeSelectionStrategy(connectorSession), NO_PREFERENCE);
     }
 
@@ -54,7 +54,7 @@ public class TestHiveSessionProperties
                 new HiveSessionProperties(
                         new HiveClientConfig().setNodeSelectionStrategy(HARD_AFFINITY),
                         new OrcFileWriterConfig(),
-                        new ParquetFileWriterConfig()).getSessionProperties());
+                        new ParquetFileWriterConfig(), ).getSessionProperties());
         assertEquals(getNodeSelectionStrategy(connectorSession), HARD_AFFINITY);
     }
 }
