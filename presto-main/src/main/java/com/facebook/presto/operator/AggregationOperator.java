@@ -182,6 +182,7 @@ public class AggregationOperator
         }
 
         state = State.FINISHED;
-        return pageBuilder.build();
+        Page page = pageBuilder.build();
+        return page;
     }
 }

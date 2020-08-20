@@ -367,6 +367,13 @@ public class Driver
             }
 
             boolean movedPage = false;
+            //Rohit: This is tricky.
+            //As we not only need to fetch results(pages?) from the top leaf level operator(scan -> agg, then agg in this case).
+            //but we also need to make sure we do not process the operators from the other leaf level things. (scan in this case).
+            //What is the correct form of storing results? pages?
+            //We also need to decide caching results and fetching results from the cache based on the splits and the plan.
+            //Where is that place?
+
             for (int i = 0; i < activeOperators.size() - 1 && !driverContext.isDone(); i++) {
                 Operator current = activeOperators.get(i);
                 Operator next = activeOperators.get(i + 1);
