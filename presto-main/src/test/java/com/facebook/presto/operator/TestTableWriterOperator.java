@@ -25,6 +25,7 @@ import com.facebook.presto.execution.scheduler.ExecutionWriterTarget.CreateHandl
 import com.facebook.presto.memory.context.MemoryTrackingContext;
 import com.facebook.presto.metadata.FunctionManager;
 import com.facebook.presto.metadata.OutputTableHandle;
+import com.facebook.presto.metadata.Split;
 import com.facebook.presto.operator.AggregationOperator.AggregationOperatorFactory;
 import com.facebook.presto.operator.DevNullOperator.DevNullOperatorFactory;
 import com.facebook.presto.operator.TableWriterOperator.TableWriterInfo;
@@ -216,7 +217,8 @@ public class TestTableWriterOperator
                         new PlanNodeId("test"),
                         AggregationNode.Step.SINGLE,
                         ImmutableList.of(longMaxFunction.bind(ImmutableList.of(0), Optional.empty())),
-                        true),
+                        true,
+                        jsonCodec(Split.class)),
                 outputTypes,
                 session,
                 driverContext);

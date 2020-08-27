@@ -791,6 +791,7 @@ public class LocalQueryRunner
                 new LookupJoinOperators(),
                 new OrderingCompiler(),
                 jsonCodec(TableCommitContext.class),
+                jsonCodec(Split.class),
                 new RowExpressionDeterminismEvaluator(metadata));
 
         // plan query
