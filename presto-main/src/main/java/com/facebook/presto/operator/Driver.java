@@ -247,6 +247,7 @@ public class Driver
         SourceOperator sourceOperator = this.sourceOperator.orElseThrow(VerifyException::new);
         for (ScheduledSplit newSplit : newSplits) {
             Split split = newSplit.getSplit();
+//            log.info("A new split has been created, splitId: %s, task: %s", split, this.getDriverContext().getTaskId());
 
             Supplier<Optional<UpdatablePageSource>> pageSource = sourceOperator.addSplit(split);
             deleteOperator.ifPresent(deleteOperator -> deleteOperator.setPageSource(pageSource));

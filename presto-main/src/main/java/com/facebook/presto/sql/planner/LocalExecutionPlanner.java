@@ -45,6 +45,7 @@ import com.facebook.presto.index.IndexManager;
 import com.facebook.presto.metadata.AnalyzeTableHandle;
 import com.facebook.presto.metadata.FunctionManager;
 import com.facebook.presto.metadata.Metadata;
+import com.facebook.presto.metadata.Split;
 import com.facebook.presto.operator.AggregationOperator.AggregationOperatorFactory;
 import com.facebook.presto.operator.AssignUniqueIdOperator;
 import com.facebook.presto.operator.DeleteOperator.DeleteOperatorFactory;
@@ -196,6 +197,7 @@ import com.facebook.presto.sql.relational.FunctionResolution;
 import com.facebook.presto.sql.relational.VariableToChannelTranslator;
 import com.facebook.presto.sql.tree.SymbolReference;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.VerifyException;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.HashMultimap;
@@ -221,6 +223,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -253,6 +256,7 @@ import static com.facebook.presto.expressions.LogicalRowExpressions.TRUE_CONSTAN
 import static com.facebook.presto.expressions.RowExpressionNodeInliner.replaceExpression;
 import static com.facebook.presto.geospatial.SphericalGeographyUtils.sphericalDistance;
 import static com.facebook.presto.operator.DistinctLimitOperator.DistinctLimitOperatorFactory;
+import static com.facebook.presto.operator.DriverSplitCacheOperator.DriverSplitCacheOperatorFactory;
 import static com.facebook.presto.operator.NestedLoopBuildOperator.NestedLoopBuildOperatorFactory;
 import static com.facebook.presto.operator.NestedLoopJoinOperator.NestedLoopJoinOperatorFactory;
 import static com.facebook.presto.operator.PageSinkCommitStrategy.LIFESPAN_COMMIT;
@@ -341,6 +345,45 @@ public class LocalExecutionPlanner
     private final LogicalRowExpressions logicalRowExpressions;
 
     private static final TypeSignature SPHERICAL_GEOGRAPHY_TYPE_SIGNATURE = parseTypeSignature("SphericalGeography");
+
+    public static final Map<FragmentCacheKey, List<Page>> fragmentCache = new HashMap<>();
+
+    public static class FragmentCacheKey
+    {
+        public final PlanNode planNode;
+        public final Split split;
+
+        public FragmentCacheKey(PlanNode planNode, Split split)
+        {
+            this.planNode = planNode;
+            this.split = split;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) { return true; }
+            if (o == null || getClass() != o.getClass()) { return false; }
+            FragmentCacheKey that = (FragmentCacheKey) o;
+            return Objects.equals(planNode, that.planNode) &&
+                    Objects.equals(split, that.split);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(planNode, split);
+        }
+
+        @Override
+        public String toString()
+        {
+            return MoreObjects.toStringHelper(this)
+                    .add("planNode", planNode)
+                    .add("split", split)
+                    .toString();
+        }
+    }
 
     @Inject
     public LocalExecutionPlanner(
@@ -520,6 +563,15 @@ public class LocalExecutionPlanner
         return Optional.of(new OutputPartitioning(partitionFunction, partitionChannels, partitionConstants, partitioningScheme.isReplicateNullsAndAny(), nullChannel));
     }
 
+    private static boolean contains(PlanNode plan, Class<? extends PlanNode> target)
+    {
+        if (plan.getClass().getName().equals(target.getName())) {
+            return true;
+        }
+
+        return plan.getSources().stream().anyMatch(source -> contains(source, target));
+    }
+
     @VisibleForTesting
     public LocalExecutionPlan plan(
             TaskContext taskContext,
@@ -534,8 +586,11 @@ public class LocalExecutionPlanner
             boolean pageSinkCommitRequired)
     {
         Session session = taskContext.getSession();
-        LocalExecutionPlanContext context = new LocalExecutionPlanContext(taskContext, tableWriteInfo);
+        LocalExecutionPlanContext context = new LocalExecutionPlanContext(taskContext, tableWriteInfo, plan);
         PhysicalOperation physicalOperation = plan.accept(new Visitor(session, stageExecutionDescriptor, remoteSourceFactory, pageSinkCommitRequired), context);
+//        if (contains(plan, TableScanNode.class) && !contains(plan, ExchangeNode.class)) {
+//            physicalOperation.operatorFactories.add(new DriverSplitCacheOperatorFactory(context.getNextOperatorId(), plan));
+//        }
 
         Function<Page, Page> pagePreprocessor = enforceLayoutProcessor(outputLayout, physicalOperation.getLayout());
 
@@ -615,14 +670,15 @@ public class LocalExecutionPlanner
         // this is shared with all subContexts
         private final AtomicInteger nextPipelineId;
         private final TableWriteInfo tableWriteInfo;
+        private final PlanNode plan;
 
         private int nextOperatorId;
         private boolean inputDriver = true;
         private OptionalInt driverInstanceCount = OptionalInt.empty();
 
-        public LocalExecutionPlanContext(TaskContext taskContext, TableWriteInfo tableWriteInfo)
+        public LocalExecutionPlanContext(TaskContext taskContext, TableWriteInfo tableWriteInfo, PlanNode plan)
         {
-            this(taskContext, new ArrayList<>(), Optional.empty(), new LocalDynamicFiltersCollector(), new AtomicInteger(0), tableWriteInfo);
+            this(taskContext, new ArrayList<>(), Optional.empty(), new LocalDynamicFiltersCollector(), new AtomicInteger(0), tableWriteInfo, plan);
         }
 
         private LocalExecutionPlanContext(
@@ -631,7 +687,8 @@ public class LocalExecutionPlanner
                 Optional<IndexSourceContext> indexSourceContext,
                 LocalDynamicFiltersCollector dynamicFiltersCollector,
                 AtomicInteger nextPipelineId,
-                TableWriteInfo tableWriteInfo)
+                TableWriteInfo tableWriteInfo,
+                PlanNode plan)
         {
             this.taskContext = taskContext;
             this.driverFactories = driverFactories;
@@ -639,6 +696,7 @@ public class LocalExecutionPlanner
             this.dynamicFiltersCollector = dynamicFiltersCollector;
             this.nextPipelineId = nextPipelineId;
             this.tableWriteInfo = tableWriteInfo;
+            this.plan = plan;
         }
 
         public void addDriverFactory(boolean inputDriver, boolean outputDriver, List<OperatorFactory> operatorFactories, OptionalInt driverInstances, PipelineExecutionStrategy pipelineExecutionStrategy)
@@ -708,12 +766,12 @@ public class LocalExecutionPlanner
         public LocalExecutionPlanContext createSubContext()
         {
             checkState(!indexSourceContext.isPresent(), "index build plan can not have sub-contexts");
-            return new LocalExecutionPlanContext(taskContext, driverFactories, indexSourceContext, dynamicFiltersCollector, nextPipelineId, tableWriteInfo);
+            return new LocalExecutionPlanContext(taskContext, driverFactories, indexSourceContext, dynamicFiltersCollector, nextPipelineId, tableWriteInfo, plan);
         }
 
         public LocalExecutionPlanContext createIndexSourceSubContext(IndexSourceContext indexSourceContext)
         {
-            return new LocalExecutionPlanContext(taskContext, driverFactories, Optional.of(indexSourceContext), dynamicFiltersCollector, nextPipelineId, tableWriteInfo);
+            return new LocalExecutionPlanContext(taskContext, driverFactories, Optional.of(indexSourceContext), dynamicFiltersCollector, nextPipelineId, tableWriteInfo, plan);
         }
 
         public OptionalInt getDriverInstanceCount()
@@ -3139,10 +3197,10 @@ public class LocalExecutionPlanner
             requireNonNull(source, "source is null");
             requireNonNull(pipelineExecutionStrategy, "pipelineExecutionStrategy is null");
 
-            this.operatorFactories = ImmutableList.<OperatorFactory>builder()
+            this.operatorFactories = new ArrayList<>(ImmutableList.<OperatorFactory>builder()
                     .addAll(source.map(PhysicalOperation::getOperatorFactories).orElse(ImmutableList.of()))
                     .add(operatorFactory)
-                    .build();
+                    .build());
             this.layout = ImmutableMap.copyOf(layout);
             this.types = toTypes(layout);
             this.pipelineExecutionStrategy = pipelineExecutionStrategy;

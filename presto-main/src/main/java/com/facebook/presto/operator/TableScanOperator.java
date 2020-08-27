@@ -14,6 +14,7 @@
 package com.facebook.presto.operator;
 
 import com.facebook.presto.common.Page;
+import com.facebook.presto.common.block.RunLengthEncodedBlock;
 import com.facebook.presto.memory.context.LocalMemoryContext;
 import com.facebook.presto.metadata.Split;
 import com.facebook.presto.spi.ColumnHandle;
@@ -37,6 +38,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 import static com.facebook.airlift.concurrent.MoreFutures.toListenableFuture;
+import static com.facebook.airlift.json.JsonCodec.jsonCodec;
+import static com.facebook.presto.common.type.VarbinaryType.VARBINARY;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 
@@ -256,6 +259,7 @@ public class TableScanOperator
             // update operator stats
             operatorContext.recordProcessedInput(page.getSizeInBytes(), page.getPositionCount());
             recordSourceRawInputStats();
+//            page.appendColumn(RunLengthEncodedBlock.create(VARBINARY, jsonCodec(Split.class).toJsonBytes(split), page.getPositionCount() + 1));
         }
 
         // updating system memory usage should happen after page is loaded.

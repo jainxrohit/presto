@@ -13,8 +13,10 @@
  */
 package com.facebook.presto.operator;
 
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.common.Page;
 import com.facebook.presto.common.PageBuilder;
+import com.facebook.presto.common.block.Block;
 import com.facebook.presto.common.block.BlockBuilder;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.memory.context.LocalMemoryContext;
@@ -25,6 +27,7 @@ import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
+import static com.facebook.presto.spi.plan.AggregationNode.Step.PARTIAL;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
@@ -35,6 +38,8 @@ import static java.util.Objects.requireNonNull;
 public class AggregationOperator
         implements Operator
 {
+    private static final Logger log = Logger.get(AggregationOperator.class);
+
     public static class AggregationOperatorFactory
             implements OperatorFactory
     {
@@ -87,8 +92,10 @@ public class AggregationOperator
     private final LocalMemoryContext userMemoryContext;
     private final List<Aggregator> aggregates;
     private final boolean useSystemMemory;
+    private final Step step;
 
     private State state = State.NEEDS_INPUT;
+    private Block splitBlock = null;
 
     public AggregationOperator(OperatorContext operatorContext, Step step, List<AccumulatorFactory> accumulatorFactories, boolean useSystemMemory)
     {
@@ -96,6 +103,7 @@ public class AggregationOperator
         this.systemMemoryContext = operatorContext.newLocalSystemMemoryContext(AggregationOperator.class.getSimpleName());
         this.userMemoryContext = operatorContext.localUserMemoryContext();
         this.useSystemMemory = useSystemMemory;
+        this.step = step;
 
         requireNonNull(step, "step is null");
 
@@ -118,6 +126,7 @@ public class AggregationOperator
     public void finish()
     {
         if (state == State.NEEDS_INPUT) {
+            log.info("finish.. task:%s", this.getOperatorContext().getDriverContext().getTaskId());
             state = State.HAS_OUTPUT;
         }
     }
@@ -144,6 +153,7 @@ public class AggregationOperator
     @Override
     public void addInput(Page page)
     {
+        log.info("addInput.. page: %s, task:%s", page.toString(), this.getOperatorContext().getDriverContext().getTaskId());
         checkState(needsInput(), "Operator is already finishing");
         requireNonNull(page, "page is null");
 
@@ -167,6 +177,8 @@ public class AggregationOperator
             return null;
         }
 
+        log.info("getOutput.. task:%s", this.getOperatorContext().getDriverContext().getTaskId());
+
         // project results into output blocks
         List<Type> types = aggregates.stream().map(Aggregator::getType).collect(toImmutableList());
 
@@ -183,6 +195,10 @@ public class AggregationOperator
 
         state = State.FINISHED;
         Page page = pageBuilder.build();
+        if (splitBlock == null) {
+            return page;
+        }
+        page.appendColumn(splitBlock);
         return page;
     }
 }

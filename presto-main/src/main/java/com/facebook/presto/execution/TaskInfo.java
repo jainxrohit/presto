@@ -13,8 +13,10 @@
  */
 package com.facebook.presto.execution;
 
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.execution.buffer.BufferInfo;
 import com.facebook.presto.execution.buffer.OutputBufferInfo;
+import com.facebook.presto.operator.AggregationOperator;
 import com.facebook.presto.operator.TaskStats;
 import com.facebook.presto.spi.plan.PlanNodeId;
 import com.fasterxml.jackson.annotation.JsonCreator;

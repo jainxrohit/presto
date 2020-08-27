@@ -125,13 +125,14 @@ public final class HiveQueryRunner
 
         Map<String, String> systemProperties = ImmutableMap.<String, String>builder()
                 .put("task.writer-count", "2")
+                .put("task.max-drivers-per-task", "4")
                 .put("task.partitioned-writer-count", "4")
                 .putAll(extraProperties)
                 .build();
 
         DistributedQueryRunner queryRunner =
                 DistributedQueryRunner.builder(createSession(Optional.of(new SelectedRole(ROLE, Optional.of("admin")))))
-                        .setNodeCount(4)
+                        .setNodeCount(1)
                         .setExtraProperties(systemProperties)
                         .setCoordinatorProperties(extraCoordinatorProperties)
                         .setBaseDataDir(baseDataDir)
