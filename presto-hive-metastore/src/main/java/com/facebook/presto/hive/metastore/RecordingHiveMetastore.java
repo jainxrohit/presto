@@ -326,6 +326,13 @@ public class RecordingHiveMetastore
     }
 
     @Override
+    public void updateTableParameters(String databaseName, String tableName, Map<String, String> parametersToUpdate, Set<String> parametersToDrop)
+    {
+        verifyRecordingMode();
+        delegate.updateTableParameters(databaseName, tableName, parametersToUpdate, parametersToDrop);
+    }
+
+    @Override
     public Optional<Partition> getPartition(String databaseName, String tableName, List<String> partitionValues)
     {
         return loadValue(
