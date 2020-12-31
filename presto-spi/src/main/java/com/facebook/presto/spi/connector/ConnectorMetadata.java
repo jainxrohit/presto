@@ -569,6 +569,11 @@ public interface ConnectorMetadata
         return Optional.empty();
     }
 
+    default Optional<ConnectorMaterializedViewDefinition> getMaterializedView(ConnectorSession session, SchemaTableName viewName, boolean checkFreshness)
+    {
+        return Optional.empty();
+    }
+
     /**
      * Create the specified materialized view. The data for the materialized view is opaque to the connector.
      */

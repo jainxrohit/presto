@@ -15,6 +15,7 @@ package com.facebook.presto.spi;
 
 import com.facebook.presto.common.type.Type;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
@@ -33,6 +34,8 @@ public final class ConnectorMaterializedViewDefinition
     private final String table;
     private final List<ViewBaseTable> baseTables;
     private final Optional<String> owner;
+    @JsonIgnore
+    private boolean isFresh;
 
     @JsonCreator
     public ConnectorMaterializedViewDefinition(
@@ -49,6 +52,7 @@ public final class ConnectorMaterializedViewDefinition
         this.table = requireNonNull(table, "table is null");
         this.baseTables = unmodifiableList(new ArrayList<>(requireNonNull(baseTables, "baseTables is null")));
         this.owner = requireNonNull(owner, "owner is null");
+        this.isFresh = true;
     }
 
     @JsonProperty
@@ -99,6 +103,18 @@ public final class ConnectorMaterializedViewDefinition
         sb.append(",owner=").append(owner.orElse(null));
         sb.append("}");
         return sb.toString();
+    }
+
+    @JsonIgnore
+    public boolean isFresh()
+    {
+        return this.isFresh;
+    }
+
+    @JsonIgnore
+    public void setFresh(boolean fresh)
+    {
+        this.isFresh = fresh;
     }
 
     public static final class ViewBaseTable

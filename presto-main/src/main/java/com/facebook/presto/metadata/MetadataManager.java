@@ -1044,13 +1044,19 @@ public class MetadataManager
     @Override
     public Optional<ConnectorMaterializedViewDefinition> getMaterializedView(Session session, QualifiedObjectName viewName)
     {
+        return getMaterializedView(session, viewName, false);
+    }
+
+    @Override
+    public Optional<ConnectorMaterializedViewDefinition> getMaterializedView(Session session, QualifiedObjectName viewName, boolean checkFreshness)
+    {
         Optional<CatalogMetadata> catalog = getOptionalCatalogMetadata(session, viewName.getCatalogName());
         if (catalog.isPresent()) {
             CatalogMetadata catalogMetadata = catalog.get();
             ConnectorId connectorId = catalogMetadata.getConnectorId(session, viewName);
             ConnectorMetadata metadata = catalogMetadata.getMetadataFor(connectorId);
 
-            return metadata.getMaterializedView(session.toConnectorSession(connectorId), toSchemaTableName(viewName));
+            return metadata.getMaterializedView(session.toConnectorSession(connectorId), toSchemaTableName(viewName), checkFreshness);
         }
         return Optional.empty();
     }

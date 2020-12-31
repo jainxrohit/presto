@@ -2198,16 +2198,32 @@ public class HiveMetadata
     @Override
     public Optional<ConnectorMaterializedViewDefinition> getMaterializedView(ConnectorSession session, SchemaTableName viewName)
     {
+        return getMaterializedView(session, viewName, false);
+    }
+
+    @Override
+    public Optional<ConnectorMaterializedViewDefinition> getMaterializedView(ConnectorSession session, SchemaTableName viewName, boolean checkFreshness)
+    {
         requireNonNull(viewName, "viewName is null");
         Optional<Table> table = metastore.getTable(viewName.getSchemaName(), viewName.getTableName());
         if (table.isPresent() && MetastoreUtil.isPrestoMaterializedView(table.get())) {
+            ConnectorMaterializedViewDefinition viewDefinition;
             try {
                 JsonCodec<ConnectorMaterializedViewDefinition> codec = JsonCodec.jsonCodec(ConnectorMaterializedViewDefinition.class);
-                return Optional.of(codec.fromJson(decodeViewData(table.get().getParameters().get(PRESTO_MATERIALIZED_VIEW_DATA))));
+                viewDefinition = codec.fromJson(decodeViewData(table.get().getParameters().get(PRESTO_MATERIALIZED_VIEW_DATA)));
             }
             catch (IllegalArgumentException e) {
                 throw new PrestoException(INVALID_VIEW, "Invalid materialized view JSON", e);
             }
+            if (checkFreshness) {
+                List<Table> baseTables = viewDefinition.getBaseTables().stream()
+                        .map(baseTable -> metastore.getTable(baseTable.getName().getSchemaName(), baseTable.getName().getTableName())
+                                .orElseThrow(() -> new TableNotFoundException(baseTable.getName())))
+                        .collect(toImmutableList());
+                viewDefinition.setFresh(HiveMaterializedViewFreshness.of(table.get(), baseTables, metastore).isFresh());
+            }
+
+            return Optional.of(viewDefinition);
         }
         return Optional.empty();
     }

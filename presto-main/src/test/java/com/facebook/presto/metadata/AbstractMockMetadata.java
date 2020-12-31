@@ -420,6 +420,12 @@ public abstract class AbstractMockMetadata
     }
 
     @Override
+    public Optional<ConnectorMaterializedViewDefinition> getMaterializedView(Session session, QualifiedObjectName viewName, boolean checkFreshness)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void createMaterializedView(Session session, String catalogName, ConnectorTableMetadata viewMetadata, ConnectorMaterializedViewDefinition viewDefinition, boolean ignoreExisting)
     {
         throw new UnsupportedOperationException();

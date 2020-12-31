@@ -364,6 +364,8 @@ public interface Metadata
      */
     Optional<ConnectorMaterializedViewDefinition> getMaterializedView(Session session, QualifiedObjectName viewName);
 
+    Optional<ConnectorMaterializedViewDefinition> getMaterializedView(Session session, QualifiedObjectName viewName, boolean checkFreshness);
+
     /**
      * Creates the specified materialized view with the specified view definition.
      */
