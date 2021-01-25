@@ -557,6 +557,17 @@ public class CachingHiveMetastore
         }
     }
 
+    @Override
+    public void updateTableParameters(String databaseName, String tableName, Map<String, String> parametersToUpdate, Set<String> parametersToDrop)
+    {
+        try {
+            delegate.updateTableParameters(databaseName, tableName, parametersToUpdate, parametersToDrop);
+        }
+        finally {
+            invalidateTable(databaseName, tableName);
+        }
+    }
+
     protected void invalidateTable(String databaseName, String tableName)
     {
         tableCache.invalidate(hiveTableName(databaseName, tableName));

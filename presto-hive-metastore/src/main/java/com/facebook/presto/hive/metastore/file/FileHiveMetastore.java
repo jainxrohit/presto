@@ -96,6 +96,7 @@ import static com.facebook.presto.spi.security.PrincipalType.USER;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Sets.intersection;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -537,6 +538,21 @@ public class FileHiveMetastore
             }
 
             return oldTable.withDataColumns(newDataColumns.build());
+        });
+    }
+
+    @Override
+    public void updateTableParameters(String databaseName, String tableName, Map<String, String> parametersToUpdate, Set<String> parametersToDrop)
+    {
+        requireNonNull(parametersToUpdate, "parametersToUpdate is null");
+        requireNonNull(parametersToDrop, "parametersToDrop is null");
+        checkArgument(intersection(parametersToUpdate.keySet(), parametersToDrop).size() == 0, "Parameters to drop conflict with parameters to update");
+
+        alterTable(databaseName, tableName, oldTable -> {
+            Map<String, String> newParameters = new HashMap<>(oldTable.getParameters());
+            newParameters.putAll(parametersToUpdate);
+            parametersToDrop.forEach(newParameters::remove);
+            return oldTable.withParameters(newParameters);
         });
     }
 
