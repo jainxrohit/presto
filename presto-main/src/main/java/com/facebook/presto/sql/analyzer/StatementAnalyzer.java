@@ -1061,6 +1061,7 @@ class StatementAnalyzer
             }
 
             Optional<ConnectorMaterializedViewDefinition> optionalMaterializedView = metadata.getMaterializedView(session, name);
+
             if (optionalMaterializedView.isPresent()) {
                 Statement statement = analysis.getStatement();
 
@@ -1076,6 +1077,35 @@ class StatementAnalyzer
                 if (analysis.hasTableInView(table)) {
                     throw new SemanticException(MATERIALIZED_VIEW_IS_RECURSIVE, table, "Materialized view is recursive");
                 }
+
+                ConnectorMaterializedViewDefinition view = optionalMaterializedView.get();
+                Query query = parseView(view.getOriginalSql(), name, table);
+
+                analysis.registerNamedQuery(table, query);
+
+                analysis.registerTableForView(table);
+                RelationType descriptor = analyzeView(query, name, view.getCatalog(), Optional.of(view.getSchema()), view.getOwner(), table);
+                analysis.unregisterTableForView();
+
+                ImmutableList.Builder<Field> fields = ImmutableList.builder();
+
+                List<ViewDefinition.ViewColumn> columns = analysis.getOutputDescriptor(query)
+                        .getVisibleFields().stream()
+                        .map(field -> new ViewDefinition.ViewColumn(field.getName().get(), field.getType()))
+                        .collect(toImmutableList());
+
+                List<Field> outputFields = columns.stream()
+                        .map(column -> Field.newQualified(
+                                table.getName(),
+                                Optional.of(column.getName()),
+                                column.getType(),
+                                false,
+                                Optional.of(name),
+                                Optional.of(column.getName()),
+                                false))
+                        .collect(toImmutableList());
+
+                return createAndAssignScope(table, scope, outputFields);
             }
 
             Optional<TableHandle> tableHandle = metadata.getTableHandle(session, name);
@@ -1088,6 +1118,7 @@ class StatementAnalyzer
                 }
                 throw new SemanticException(MISSING_TABLE, table, "Table %s does not exist", name);
             }
+
             TableMetadata tableMetadata = metadata.getTableMetadata(session, tableHandle.get());
             Map<String, ColumnHandle> columnHandles = metadata.getColumnHandles(session, tableHandle.get());
 
@@ -1099,6 +1130,7 @@ class StatementAnalyzer
                         Optional.of(column.getName()),
                         column.getType(),
                         column.isHidden(),
+
                         Optional.of(name),
                         Optional.of(column.getName()),
                         false);
