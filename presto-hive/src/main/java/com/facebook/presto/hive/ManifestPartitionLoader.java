@@ -31,7 +31,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.InputFormat;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -120,15 +119,10 @@ public class ManifestPartitionLoader
         for (int i = 0; i < fileNames.size(); i++) {
             Path filePath = new Path(path, fileNames.get(i));
             FileStatus fileStatus = new FileStatus(fileSizes.get(i), false, 1, getMaxSplitSize(session).toBytes(), 0, filePath);
-            try {
-                BlockLocation[] locations = new BlockLocation[] {new BlockLocation(BLOCK_LOCATION_NAMES, BLOCK_LOCATION_HOSTS, 0, fileSizes.get(i))};
+            BlockLocation[] locations = new BlockLocation[] {new BlockLocation(BLOCK_LOCATION_NAMES, BLOCK_LOCATION_HOSTS, 0, fileSizes.get(i))};
 
-                // It is safe to set extraFileContext as empty because downstream code always checks if its present before proceeding.
-                fileListBuilder.add(HiveFileInfo.createHiveFileInfo(new LocatedFileStatus(fileStatus, locations), Optional.empty()));
-            }
-            catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+            // It is safe to set extraFileContext as empty because downstream code always checks if its present before proceeding.
+            fileListBuilder.add(HiveFileInfo.createHiveFileInfo(new LocatedFileStatus(fileStatus, locations), Optional.empty()));
         }
 
         InternalHiveSplitFactory splitFactory = createInternalHiveSplitFactory(table, partition, session, pathDomain, hdfsEnvironment, hdfsContext, schedulerUsesHostAddresses);
