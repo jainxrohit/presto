@@ -154,6 +154,9 @@ public class Analysis
     // for materialized view analysis state detection, state is used to identify if materialized view has been expanded or in-process.
     private final Map<Table, MaterializedViewAnalysisState> materializedViewAnalysisStateMap = new HashMap<>();
 
+    // for recursive base query detection
+    private boolean isStatementRewriteWithOptimizationEnabled;
+
     public Analysis(@Nullable Statement root, List<Expression> parameters, boolean isDescribe)
     {
         requireNonNull(parameters);
@@ -161,6 +164,7 @@ public class Analysis
         this.root = root;
         this.parameters = ImmutableList.copyOf(requireNonNull(parameters, "parameters is null"));
         this.isDescribe = isDescribe;
+        this.isStatementRewriteWithOptimizationEnabled = true;
     }
 
     public Statement getStatement()
@@ -757,6 +761,16 @@ public class Analysis
                 .collect(toImmutableMap(
                         field -> field.getName().get(),
                         field -> ImmutableMap.of(toSchemaTableName(field.getOriginTable().get()), field.getOriginColumnName().get())));
+    }
+
+    public boolean isStatementRewriteWithOptimizationEnabled()
+    {
+        return isStatementRewriteWithOptimizationEnabled;
+    }
+
+    public void setStatementRewrite()
+    {
+        isStatementRewriteWithOptimizationEnabled = false;
     }
 
     @Immutable
