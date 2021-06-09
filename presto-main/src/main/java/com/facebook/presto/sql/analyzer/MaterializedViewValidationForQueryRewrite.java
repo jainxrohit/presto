@@ -41,7 +41,7 @@ public class MaterializedViewValidationForQueryRewrite<R, C>
         return null;
     }
 
-    protected Set<String> generateMaterializedViewCandidate()
+    public Set<String> generateMaterializedViewCandidate()
     {
         Set<String> materializedViewCandidate = new HashSet();
         boolean visitAtLeastOneBaseTable = false;

@@ -992,15 +992,6 @@ class StatementAnalyzer
         @Override
         protected Scope visitQuery(Query node, Optional<Scope> scope)
         {
-            Statement statement = analysis.getStatement();
-
-            if (statement instanceof Query && analysis.isStatementRewriteWithOptimizationEnabled() && SystemSessionProperties.isQueryOptimizationWithMaterializedViewEnabled(session)) {
-                Optional<Query> optimizeQuery = optimizeQueryUsingMaterializedView(node);
-                if (optimizeQuery.isPresent()) {
-                    return process(optimizeQuery.get(), scope);
-                }
-            }
-
             Scope withScope = analyzeWith(node, scope);
             Scope queryBodyScope = process(node.getQueryBody(), withScope);
             List<Expression> orderByExpressions = emptyList();
@@ -1290,46 +1281,6 @@ class StatementAnalyzer
             // can we return the above query object, instead of building a query string?
             // in case of returning the query object, make sure to clone the original query object.
             return SqlFormatterUtil.getFormattedSql(unionQuery, sqlParser, Optional.empty());
-        }
-
-        private Optional<Query> optimizeQueryUsingMaterializedView(Query node)
-        {
-            Map<String, List<String>> baseTableToMaterializedViewMapping = getBaseToMaterializedViewMapping();
-            MaterializedViewValidationForQueryRewrite rewriteValidator = new MaterializedViewValidationForQueryRewrite<>(baseTableToMaterializedViewMapping);
-            rewriteValidator.process(node);
-            Set<String> materializedViewCandidate = rewriteValidator.generateMaterializedViewCandidate();
-            if (materializedViewCandidate.isEmpty()) {
-                return Optional.empty();
-            }
-            analysis.setStatementRewrite();
-            Query rewriteQuery = getQueryWithMaterializedViewOptimization(node, materializedViewCandidate);
-            return Optional.of(rewriteQuery);
-        }
-
-        // TODO: The mapping should be fetched from metastore
-        private Map<String, List<String>> getBaseToMaterializedViewMapping()
-        {
-            Map<String, List<String>> baseTableToMaterializedViewMap = new HashMap<>();
-            return baseTableToMaterializedViewMap;
-        }
-
-        private Query getQueryWithMaterializedViewOptimization(
-                Query statement,
-                Set<String> materializedViewList)
-        {
-            for (String materializedViewName : materializedViewList) {
-                Table materializedViewTable = new Table(QualifiedName.of(materializedViewName));
-                QualifiedObjectName materializedViewQualifiedObjectName = createQualifiedObjectName(session, materializedViewTable, materializedViewTable.getName());
-                Optional<ConnectorMaterializedViewDefinition> materializedView = metadata.getMaterializedView(session, materializedViewQualifiedObjectName);
-
-                Query originalViewQuery = (Query) sqlParser.createStatement(materializedView.get().getOriginalSql());
-                Query rewriteBaseToViewQuery = (Query) new MaterializedViewQueryOptimizer(session).process(statement, new MaterializedViewQueryOptimizerContext(materializedViewTable, originalViewQuery));
-
-                // Temporarily it returns the first rewrite query
-                // TODO: Find the appropriate materialized view for a base query
-                return rewriteBaseToViewQuery;
-            }
-            return statement;
         }
 
         private Map<SchemaTableName, Expression> generatePartitionPredicate(Map<SchemaTableName, MaterializedDataPredicates> partitionsFromBaseTables)

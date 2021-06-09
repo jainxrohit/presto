@@ -228,7 +228,7 @@ public class MaterializedViewQueryOptimizer
         return new SimpleGroupBy(rewriteSimpleGroupBy.build());
     }
 
-    protected static final class MaterializedViewQueryOptimizerContext
+    public static final class MaterializedViewQueryOptimizerContext
     {
         private Table materializedViewTable;
         private Query originalSqlQuery;

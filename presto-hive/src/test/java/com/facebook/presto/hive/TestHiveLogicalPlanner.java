@@ -1375,7 +1375,7 @@ public class TestHiveLogicalPlanner
         }
     }
 
-    @Test(enabled = false)
+    @Test
     public void testMaterializedViewOptimizationWithDerivedFields()
     {
         QueryRunner queryRunner = getQueryRunner();
@@ -1412,7 +1412,7 @@ public class TestHiveLogicalPlanner
         }
     }
 
-    @Test(enabled = false)
+    @Test
     public void testBaseToViewConversionWithDerivedFields()
     {
         Session queryOptimizationWithMaterializedView = Session.builder(getSession())
