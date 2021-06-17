@@ -225,7 +225,7 @@ public class TestMaterializedViewQueryOptimizer
         Query expectedViewQuery = (Query) SQL_PARSER.createStatement(expectedViewSql);
 
         Query optimizedBaseToViewQuery = (Query) new MaterializedViewQueryOptimizer()
-                .process(baseQuery, new MaterializedViewQueryOptimizerContext(viewTable, originalViewQuery));
+                .rewrite(baseQuery, new MaterializedViewQueryOptimizerContext(viewTable, originalViewQuery));
 
         assertEquals(optimizedBaseToViewQuery, expectedViewQuery);
     }

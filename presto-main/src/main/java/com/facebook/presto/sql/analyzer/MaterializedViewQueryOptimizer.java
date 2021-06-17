@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.sql.analyzer;
 
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.sql.tree.AllColumns;
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
 import com.facebook.presto.sql.tree.AstVisitor;
@@ -47,6 +48,19 @@ import static java.util.Objects.requireNonNull;
 public class MaterializedViewQueryOptimizer
         extends AstVisitor<Node, MaterializedViewQueryOptimizer.MaterializedViewQueryOptimizerContext>
 {
+    private static final Logger logger = Logger.get(MaterializedViewQueryOptimizer.class);
+
+    public Node rewrite(Node node, MaterializedViewQueryOptimizerContext context)
+    {
+        try {
+            return process(node, context);
+        }
+        catch (IllegalStateException ex) {
+            logger.error(ex, "Failed to rewrite query: %s.", node);
+            return node;
+        }
+    }
+
     @Override
     public Node process(Node node, MaterializedViewQueryOptimizerContext context)
     {
@@ -81,10 +95,6 @@ public class MaterializedViewQueryOptimizer
         // Process from and select clause before all others to check if query is rewritable and acquire alias relation if any
         Optional<Relation> rewrittenFrom = node.getFrom().isPresent() ? Optional.of((Relation) process(node.getFrom().get(), context)) : Optional.empty();
         Select rewrittenSelect = (Select) process(node.getSelect(), context);
-
-        if (!context.isRewritable()) {
-            return node;
-        }
 
         Optional<Expression> rewrittenWhere = node.getWhere().isPresent() ? Optional.of((Expression) process(node.getWhere().get(), context)) : Optional.empty();
         Optional<GroupBy> rewrittenGroupBy = node.getGroupBy().isPresent() ? Optional.of((GroupBy) process(node.getGroupBy().get(), context)) : Optional.empty();
@@ -179,7 +189,6 @@ public class MaterializedViewQueryOptimizer
         if (baseQueryFrom.isPresent() && node.equals(baseQueryFrom.get())) {
             return context.getMaterializedView();
         }
-        context.setRewritable(false);
         return node;
     }
 
@@ -256,7 +265,6 @@ public class MaterializedViewQueryOptimizer
         private final Table materializedView;
         private final ImmutableMap<String, String> baseToViewColumnMap;
         private final Optional<Relation> baseQueryRelation;
-        private boolean rewritable;
 
         public MaterializedViewQueryOptimizerContext(
                 Table materializedView,
@@ -281,8 +289,6 @@ public class MaterializedViewQueryOptimizer
             }
 
             this.baseToViewColumnMap = baseToViewColumnMap.build();
-
-            rewritable = true;
         }
 
         public Table getMaterializedView()
@@ -293,7 +299,7 @@ public class MaterializedViewQueryOptimizer
         public String getViewColumnName(String baseColumnName)
         {
             if (!containsColumnName(baseColumnName)) {
-                setRewritable(false);
+                throw new IllegalStateException("Failed to find the base column: " + baseColumnName);
             }
             return baseToViewColumnMap.getOrDefault(baseColumnName, baseColumnName);
         }
@@ -306,16 +312,6 @@ public class MaterializedViewQueryOptimizer
         public Optional<Relation> getBaseQueryFrom()
         {
             return baseQueryRelation;
-        }
-
-        public boolean isRewritable()
-        {
-            return rewritable;
-        }
-
-        public void setRewritable(boolean state)
-        {
-            rewritable = state;
         }
     }
 }
