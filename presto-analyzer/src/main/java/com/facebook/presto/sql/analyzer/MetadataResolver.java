@@ -22,6 +22,7 @@ import com.facebook.presto.common.type.TypeSignature;
 import com.facebook.presto.common.type.TypeSignatureParameter;
 import com.facebook.presto.spi.ColumnMetadata;
 import com.facebook.presto.spi.MaterializedViewDefinition;
+import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.TableHandle;
 import com.facebook.presto.spi.function.FunctionHandle;
 import com.facebook.presto.spi.function.FunctionMetadata;
@@ -210,5 +211,16 @@ public interface MetadataResolver
     default FunctionHandle lookupCast(String castType, Type fromType, Type toType)
     {
         throw new UnsupportedOperationException("lookupCast is not supported");
+    }
+
+    /**
+     * Lookup up a function with name and fully bound types. This can only be used for builtin functions. {@link #resolveFunction(Optional, Optional, QualifiedObjectName, List)}
+     * should be used for dynamically registered functions.
+     *
+     * @throws PrestoException if function could not be found
+     */
+    default FunctionHandle lookupFunction(String name, List<TypeSignatureProvider> parameterTypes)
+    {
+        throw new UnsupportedOperationException("lookupFunction is not supported");
     }
 }

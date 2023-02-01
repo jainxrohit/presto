@@ -1448,6 +1448,12 @@ public class MetadataManager
             {
                 return functionAndTypeManager.lookupCast(CastType.valueOf(castType), fromType, toType);
             }
+
+            @Override
+            public FunctionHandle lookupFunction(String name, List<TypeSignatureProvider> parameterTypes)
+            {
+                return functionAndTypeManager.lookupFunction(name, parameterTypes);
+            }
         };
     }
 

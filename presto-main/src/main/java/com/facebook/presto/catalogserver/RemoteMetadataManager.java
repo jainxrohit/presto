@@ -289,6 +289,12 @@ public class RemoteMetadataManager
             {
                 return getFunctionAndTypeManager().lookupCast(CastType.valueOf(castType), fromType, toType);
             }
+
+            @Override
+            public FunctionHandle lookupFunction(String name, List<TypeSignatureProvider> parameterTypes)
+            {
+                return getFunctionAndTypeManager().lookupFunction(name, parameterTypes);
+            }
         };
     }
 

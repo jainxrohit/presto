@@ -98,7 +98,7 @@ public class TestJdbcComputePushdown
     {
         this.sqlToRowExpressionTranslator = new TestingRowExpressionTranslator(METADATA);
         FunctionAndTypeManager functionAndTypeManager = METADATA.getFunctionAndTypeManager();
-        StandardFunctionResolution functionResolution = new FunctionResolution(functionAndTypeManager);
+        StandardFunctionResolution functionResolution = new FunctionResolution(METADATA.getMetadataResolver(TEST_SESSION));
         DeterminismEvaluator determinismEvaluator = new RowExpressionDeterminismEvaluator(functionAndTypeManager);
 
         this.jdbcComputePushdown = new JdbcComputePushdown(
