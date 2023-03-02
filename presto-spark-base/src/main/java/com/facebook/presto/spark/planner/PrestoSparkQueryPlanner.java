@@ -127,6 +127,7 @@ public class PrestoSparkQueryPlanner
                 session,
                 metadata,
                 optimizers.getPlanningTimeOptimizers(),
+                optimizers.getRowExpressionBasedOptimizers(),
                 planChecker,
                 sqlParser,
                 planVariableAllocator,

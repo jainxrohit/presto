@@ -181,6 +181,8 @@ public class PlanOptimizers
     private final OptimizerStatsRecorder optimizerStats = new OptimizerStatsRecorder();
     private final MBeanExporter exporter;
 
+    private final ImmutableList<PlanOptimizer> rowExpressionBasedOptimizers;
+
     @Inject
     public PlanOptimizers(
             Metadata metadata,
@@ -211,20 +213,6 @@ public class PlanOptimizers
                 partitioningProviderManager);
     }
 
-    @PostConstruct
-    public void initialize()
-    {
-        ruleStats.export(exporter);
-        optimizerStats.export(exporter);
-    }
-
-    @PreDestroy
-    public void destroy()
-    {
-        ruleStats.unexport(exporter);
-        optimizerStats.unexport(exporter);
-    }
-
     public PlanOptimizers(
             Metadata metadata,
             SqlParser sqlParser,
@@ -242,6 +230,7 @@ public class PlanOptimizers
     {
         this.exporter = exporter;
         ImmutableList.Builder<PlanOptimizer> builder = ImmutableList.builder();
+        ImmutableList.Builder<PlanOptimizer> rowExpressionBasedOptimizerBuilder = ImmutableList.builder();
 
         Set<Rule<?>> predicatePushDownRules = ImmutableSet.of(
                 new MergeFilters(metadata.getFunctionAndTypeManager()));
@@ -431,6 +420,37 @@ public class PlanOptimizers
                         ImmutableSet.of(
                                 new PullConstantsAboveGroupBy())));
 
+        rowExpressionBasedOptimizerBuilder.add(
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.<Rule<?>>builder()
+                                .addAll(predicatePushDownRules)
+                                .addAll(columnPruningRules)
+                                .addAll(ImmutableSet.of(
+                                        new RemoveRedundantIdentityProjections(),
+                                        new RemoveFullSample(),
+                                        new EvaluateZeroSample(),
+                                        new PushOffsetThroughProject(),
+                                        new PushLimitThroughOffset(),
+                                        new PushLimitThroughProject(),
+                                        new MergeLimits(),
+                                        new MergeLimitWithSort(),
+                                        new MergeLimitWithTopN(),
+                                        new PushLimitThroughMarkDistinct(),
+                                        new PushLimitThroughOuterJoin(),
+                                        new PushLimitThroughSemiJoin(),
+                                        new PushLimitThroughUnion(),
+                                        new RemoveTrivialFilters(),
+                                        new SingleDistinctAggregationToGroupBy(),
+                                        new MultipleDistinctAggregationToMarkDistinct(),
+                                        new MergeLimitWithDistinct(),
+                                        new PruneCountAggregationOverScalar(metadata.getFunctionAndTypeManager()),
+                                        new PruneOrderByInAggregation(metadata.getFunctionAndTypeManager()),
+                                        new RewriteSpatialPartitioningAggregation(metadata)))
+                                .build()));
+
         builder.add(new IterativeOptimizer(
                 ruleStats,
                 statsCalculator,
@@ -538,6 +558,14 @@ public class PlanOptimizers
         // PlanRemoteProjections only handles RowExpression so this need to run after TranslateExpressions
         // Rules applied after this need to handle locality of ProjectNode properly.
         builder.add(new IterativeOptimizer(
+                ruleStats,
+                statsCalculator,
+                costCalculator,
+                ImmutableSet.of(
+                        new RewriteFilterWithExternalFunctionToProject(metadata.getFunctionAndTypeManager()),
+                        new PlanRemoteProjections(metadata.getFunctionAndTypeManager()))));
+
+        rowExpressionBasedOptimizerBuilder.add(new IterativeOptimizer(
                 ruleStats,
                 statsCalculator,
                 costCalculator,
@@ -658,6 +686,7 @@ public class PlanOptimizers
                             estimatedExchangesCostCalculator,
                             ImmutableSet.of(new PushTableWriteThroughUnion()))); // Must run before AddExchanges
             builder.add(new StatsRecordingPlanOptimizer(optimizerStats, new AddExchanges(metadata, sqlParser, partitioningProviderManager)));
+            rowExpressionBasedOptimizerBuilder.add(new StatsRecordingPlanOptimizer(optimizerStats, new AddExchanges(metadata, sqlParser, partitioningProviderManager)));
         }
 
         //noinspection UnusedAssignment
@@ -695,6 +724,7 @@ public class PlanOptimizers
 
         // Optimizers above this don't understand local exchanges, so be careful moving this.
         builder.add(new AddLocalExchanges(metadata, sqlParser));
+        rowExpressionBasedOptimizerBuilder.add(new AddLocalExchanges(metadata, sqlParser));
 
         // Optimizers above this do not need to care about aggregations with the type other than SINGLE
         // This optimizer must be run after all exchange-related optimizers
@@ -733,6 +763,7 @@ public class PlanOptimizers
         // TODO: consider adding a formal final plan sanitization optimizer that prepares the plan for transmission/execution/logging
         // TODO: figure out how to improve the set flattening optimizer so that it can run at any point
         this.planningTimeOptimizers = builder.build();
+        this.rowExpressionBasedOptimizers = rowExpressionBasedOptimizerBuilder.build();
 
         // Add runtime cost-based optimizers
         ImmutableList.Builder<PlanOptimizer> runtimeBuilder = ImmutableList.builder();
@@ -745,6 +776,20 @@ public class PlanOptimizers
         this.runtimeOptimizers = runtimeBuilder.build();
     }
 
+    @PostConstruct
+    public void initialize()
+    {
+        ruleStats.export(exporter);
+        optimizerStats.export(exporter);
+    }
+
+    @PreDestroy
+    public void destroy()
+    {
+        ruleStats.unexport(exporter);
+        optimizerStats.unexport(exporter);
+    }
+
     public List<PlanOptimizer> getPlanningTimeOptimizers()
     {
         return planningTimeOptimizers;
@@ -753,5 +798,10 @@ public class PlanOptimizers
     public List<PlanOptimizer> getRuntimeOptimizers()
     {
         return runtimeOptimizers;
+    }
+
+    public ImmutableList<PlanOptimizer> getRowExpressionBasedOptimizers()
+    {
+        return rowExpressionBasedOptimizers;
     }
 }

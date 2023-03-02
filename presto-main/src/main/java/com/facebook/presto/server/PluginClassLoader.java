@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.server;
 
+import com.facebook.airlift.log.Logger;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
@@ -29,6 +30,7 @@ import static java.util.Objects.requireNonNull;
 class PluginClassLoader
         extends URLClassLoader
 {
+    private static final Logger log = Logger.get(PluginClassLoader.class);
     private static final ClassLoader PLATFORM_CLASS_LOADER = findPlatformClassLoader();
 
     private final ClassLoader spiClassLoader;
@@ -73,6 +75,7 @@ class PluginClassLoader
 
             // If this is an SPI class, only check SPI class loader
             if (isSpiClass(name)) {
+                log.info("isSpiClass(name). Loading %s class with spiClassLoader: %s", name, spiClassLoader);
                 return resolveClass(spiClassLoader.loadClass(name), resolve);
             }
 

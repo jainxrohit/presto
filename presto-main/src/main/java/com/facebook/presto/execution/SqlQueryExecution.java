@@ -14,11 +14,13 @@
 package com.facebook.presto.execution;
 
 import com.facebook.airlift.concurrent.SetThreadName;
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.Session;
 import com.facebook.presto.common.analyzer.PreparedQuery;
 import com.facebook.presto.common.resourceGroups.QueryType;
 import com.facebook.presto.cost.CostCalculator;
 import com.facebook.presto.cost.HistoryBasedPlanStatisticsManager;
+import com.facebook.presto.cost.StatsAndCosts;
 import com.facebook.presto.cost.StatsCalculator;
 import com.facebook.presto.execution.StateMachine.StateChangeListener;
 import com.facebook.presto.execution.buffer.OutputBuffers;
@@ -49,6 +51,7 @@ import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
 import com.facebook.presto.split.CloseableSplitSourceProvider;
 import com.facebook.presto.split.SplitManager;
 import com.facebook.presto.sql.Optimizer;
+import com.facebook.presto.sql.analyzer.BuiltInQueryAnalyzer;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.planner.InputExtractor;
 import com.facebook.presto.sql.planner.OutputExtractor;
@@ -57,11 +60,15 @@ import com.facebook.presto.sql.planner.Plan;
 import com.facebook.presto.sql.planner.PlanCanonicalInfoProvider;
 import com.facebook.presto.sql.planner.PlanFragmenter;
 import com.facebook.presto.sql.planner.PlanOptimizers;
+import com.facebook.presto.sql.planner.PlannerUtils;
 import com.facebook.presto.sql.planner.SplitSourceFactory;
 import com.facebook.presto.sql.planner.SubPlan;
+import com.facebook.presto.sql.planner.TypeProvider;
 import com.facebook.presto.sql.planner.optimizations.PlanOptimizer;
 import com.facebook.presto.sql.planner.plan.OutputNode;
+import com.facebook.presto.sql.planner.planPrinter.PlanPrinter;
 import com.facebook.presto.sql.planner.sanity.PlanChecker;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
@@ -92,6 +99,7 @@ import static com.facebook.presto.execution.buffer.OutputBuffers.BROADCAST_PARTI
 import static com.facebook.presto.execution.buffer.OutputBuffers.createInitialEmptyOutputBuffers;
 import static com.facebook.presto.execution.buffer.OutputBuffers.createSpoolingOutputBuffers;
 import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
+import static com.facebook.presto.sql.Optimizer.PlanStage.CREATED;
 import static com.facebook.presto.sql.Optimizer.PlanStage.OPTIMIZED_AND_VALIDATED;
 import static com.facebook.presto.sql.planner.PlanNodeCanonicalInfo.getCanonicalInfo;
 import static com.facebook.presto.util.AnalyzerUtil.checkAccessPermissions;
@@ -107,6 +115,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public class SqlQueryExecution
         implements QueryExecution
 {
+    private static final Logger log = Logger.get(SqlQueryExecution.class);
     private static final OutputBufferId OUTPUT_BUFFER_ID = new OutputBufferId(0);
 
     private final QueryAnalyzer queryAnalyzer;
@@ -140,6 +149,7 @@ public class SqlQueryExecution
     private final PlanCanonicalInfoProvider planCanonicalInfoProvider;
     private final QueryAnalysis queryAnalysis;
     private final AnalyzerContext analyzerContext;
+    private final List<PlanOptimizer> rowExpressionBasedOptimizers;
 
     private SqlQueryExecution(
             QueryAnalyzer queryAnalyzer,
@@ -152,6 +162,7 @@ public class SqlQueryExecution
             SplitManager splitManager,
             List<PlanOptimizer> planOptimizers,
             List<PlanOptimizer> runtimePlanOptimizers,
+            List<PlanOptimizer> rowExpressionBasedOptimizers,
             PlanFragmenter planFragmenter,
             RemoteTaskFactory remoteTaskFactory,
             LocationFactory locationFactory,
@@ -176,6 +187,7 @@ public class SqlQueryExecution
             this.splitManager = requireNonNull(splitManager, "splitManager is null");
             this.planOptimizers = requireNonNull(planOptimizers, "planOptimizers is null");
             this.runtimePlanOptimizers = requireNonNull(runtimePlanOptimizers, "runtimePlanOptimizers is null");
+            this.rowExpressionBasedOptimizers = requireNonNull(rowExpressionBasedOptimizers, "rowExpressionBasedOptimizers is null");
             this.planFragmenter = requireNonNull(planFragmenter, "planFragmenter is null");
             this.locationFactory = requireNonNull(locationFactory, "locationFactory is null");
             this.queryExecutor = requireNonNull(queryExecutor, "queryExecutor is null");
@@ -476,6 +488,7 @@ public class SqlQueryExecution
 
     /**
      * Adds a listener to be notified about {@link QueryState} changes
+     *
      * @param stateChangeListener The state change listener
      */
     @Override
@@ -522,10 +535,13 @@ public class SqlQueryExecution
                     LOGICAL_PLANNER_TIME_NANOS,
                     () -> queryAnalyzer.plan(this.analyzerContext, queryAnalysis));
 
+            System.out.println(PlanPrinter.textLogicalPlan(planNode, TypeProvider.viewOf(analyzerContext.getVariableAllocator().getVariables()), StatsAndCosts.empty(), metadata.getFunctionAndTypeManager(), getSession(), 0));
+
             Optimizer optimizer = new Optimizer(
                     stateMachine.getSession(),
                     metadata,
                     planOptimizers,
+                    rowExpressionBasedOptimizers,
                     planChecker,
                     sqlParser,
                     analyzerContext.getVariableAllocator(),
@@ -535,9 +551,20 @@ public class SqlQueryExecution
                     costCalculator,
                     false);
 
-            Plan plan = getSession().getRuntimeStats().profileNanos(
-                    OPTIMIZER_TIME_NANOS,
-                    () -> optimizer.validateAndOptimizePlan(planNode, OPTIMIZED_AND_VALIDATED));
+            Plan plan;
+            if (queryAnalyzer instanceof BuiltInQueryAnalyzer) {
+                plan = getSession().getRuntimeStats().profileNanos(
+                        OPTIMIZER_TIME_NANOS,
+                        () -> optimizer.validateAndOptimizePlan(planNode, OPTIMIZED_AND_VALIDATED));
+            }
+            else {
+                plan = getSession().getRuntimeStats().profileNanos(
+                        OPTIMIZER_TIME_NANOS,
+                        () -> optimizer.validateAndOptimizePlan(planNode, CREATED));
+            }
+
+            System.out.println("After optimization!!");
+            System.out.println(PlannerUtils.getPlanString(plan.getRoot(), getSession(), TypeProvider.viewOf(analyzerContext.getVariableAllocator().getVariables()), metadata));
 
             queryPlan.set(plan);
             stateMachine.setPlanStatsAndCosts(plan.getStatsAndCosts());
@@ -671,6 +698,7 @@ public class SqlQueryExecution
 
     /**
      * Try to cancel the execution of a specific stage
+     *
      * @param stageId id of the stage to cancel
      */
     @Override
@@ -688,6 +716,7 @@ public class SqlQueryExecution
 
     /**
      * Fail the execution of the query with a specific cause
+     *
      * @param cause The cause for failing the query execution
      */
     @Override
@@ -715,6 +744,7 @@ public class SqlQueryExecution
 
     /**
      * Register a listener to be notified about new {@link QueryOutputInfo} buffers created as tasks execute in this query
+     *
      * @param listener the listener
      */
     @Override
@@ -854,6 +884,7 @@ public class SqlQueryExecution
         private final PlanChecker planChecker;
         private final PartialResultQueryManager partialResultQueryManager;
         private final HistoryBasedPlanStatisticsManager historyBasedPlanStatisticsManager;
+        private final ImmutableList<PlanOptimizer> rowExpressionBasedOptimizers;
 
         @Inject
         SqlQueryExecutionFactory(
@@ -893,6 +924,7 @@ public class SqlQueryExecution
             this.executionPolicies = requireNonNull(executionPolicies, "schedulerPolicies is null");
             this.planOptimizers = planOptimizers.getPlanningTimeOptimizers();
             this.runtimePlanOptimizers = planOptimizers.getRuntimeOptimizers();
+            this.rowExpressionBasedOptimizers = planOptimizers.getRowExpressionBasedOptimizers();
             this.statsCalculator = requireNonNull(statsCalculator, "statsCalculator is null");
             this.costCalculator = requireNonNull(costCalculator, "costCalculator is null");
             this.planChecker = requireNonNull(planChecker, "planChecker is null");
@@ -925,6 +957,7 @@ public class SqlQueryExecution
                     splitManager,
                     planOptimizers,
                     runtimePlanOptimizers,
+                    rowExpressionBasedOptimizers,
                     planFragmenter,
                     remoteTaskFactory,
                     locationFactory,

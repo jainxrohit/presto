@@ -14,6 +14,7 @@
 package com.facebook.presto.dispatcher;
 
 import com.facebook.airlift.concurrent.BoundedExecutor;
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.Session;
 import com.facebook.presto.common.analyzer.PreparedQuery;
 import com.facebook.presto.common.resourceGroups.QueryType;
@@ -71,6 +72,7 @@ import static java.util.Objects.requireNonNull;
  */
 public class DispatchManager
 {
+    private static final Logger log = Logger.get(DispatchManager.class);
     private final QueryIdGenerator queryIdGenerator;
     private final ResourceGroupManager<?> resourceGroupManager;
     private final WarningCollectorFactory warningCollectorFactory;
@@ -286,8 +288,12 @@ public class DispatchManager
             // prepare query
             AnalyzerOptions analyzerOptions = createAnalyzerOptions(session, session.getWarningCollector());
             AnalyzerProvider analyzerProvider = analyzerProviderManager.getAnalyzerProvider(getAnalyzerType(session));
+
+            log.info("analyzer type is: %s", getAnalyzerType(session));
+            log.info("Going to call analyzerProvider.getQueryPreparer().prepareQuery for query: %s", query);
             preparedQuery = analyzerProvider.getQueryPreparer().prepareQuery(analyzerOptions, query, session.getPreparedStatements(), session.getWarningCollector());
             query = preparedQuery.getFormattedQuery().orElse(query);
+            log.info("formatted query is: %s", query);
 
             // select resource group
             Optional<QueryType> queryType = preparedQuery.getQueryType();

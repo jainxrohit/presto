@@ -216,6 +216,7 @@ public class QueryExplainer
                 session,
                 metadata,
                 planOptimizers,
+                planOptimizers,
                 planChecker,
                 sqlParser,
                 planVariableAllocator,

@@ -1076,6 +1076,7 @@ public class LocalQueryRunner
                 session,
                 metadata,
                 optimizers,
+                optimizers,
                 singleNodePlanChecker,
                 sqlParser,
                 analyzerContext.getVariableAllocator(),

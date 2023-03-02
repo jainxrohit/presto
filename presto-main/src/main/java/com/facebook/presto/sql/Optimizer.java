@@ -44,6 +44,7 @@ import static com.facebook.presto.SystemSessionProperties.getQueryAnalyzerTimeou
 import static com.facebook.presto.SystemSessionProperties.isPrintStatsForNonJoinQuery;
 import static com.facebook.presto.common.RuntimeUnit.NANO;
 import static com.facebook.presto.spi.StandardErrorCode.QUERY_PLANNING_TIMEOUT;
+import static com.facebook.presto.sql.Optimizer.PlanStage.CREATED;
 import static com.facebook.presto.sql.Optimizer.PlanStage.OPTIMIZED;
 import static com.facebook.presto.sql.Optimizer.PlanStage.OPTIMIZED_AND_VALIDATED;
 import static java.lang.String.format;
@@ -57,6 +58,7 @@ public class Optimizer
     }
 
     private final List<PlanOptimizer> planOptimizers;
+    private final List<PlanOptimizer> rowExpressionBasedOptimizers;
     private final PlanChecker planChecker;
     private final Session session;
     private final Metadata metadata;
@@ -72,6 +74,7 @@ public class Optimizer
             Session session,
             Metadata metadata,
             List<PlanOptimizer> planOptimizers,
+            List<PlanOptimizer> rowExpressionBasedOptimizers,
             PlanChecker planChecker,
             SqlParser sqlParser,
             VariableAllocator variableAllocator,
@@ -83,6 +86,7 @@ public class Optimizer
     {
         this.session = requireNonNull(session, "session is null");
         this.planOptimizers = requireNonNull(planOptimizers, "planOptimizers is null");
+        this.rowExpressionBasedOptimizers = requireNonNull(rowExpressionBasedOptimizers, "rowExpressionBasedOptimizers is null");
         this.planChecker = requireNonNull(planChecker, "planChecker is null");
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
@@ -99,6 +103,20 @@ public class Optimizer
         planChecker.validateIntermediatePlan(root, session, metadata, sqlParser, TypeProvider.viewOf(variableAllocator.getVariables()), warningCollector);
 
         boolean enableVerboseRuntimeStats = SystemSessionProperties.isVerboseRuntimeStatsEnabled(session);
+
+        if (stage.ordinal() == CREATED.ordinal()) {
+            for (PlanOptimizer optimizer : rowExpressionBasedOptimizers) {
+                long start = System.nanoTime();
+                root = optimizer.optimize(root, session, TypeProvider.viewOf(variableAllocator.getVariables()), variableAllocator, idAllocator, warningCollector);
+                requireNonNull(root, format("%s returned a null plan", optimizer.getClass().getName()));
+                if (enableVerboseRuntimeStats) {
+                    session.getRuntimeStats().addMetricValue(String.format("optimizer%sTimeNanos", optimizer.getClass().getSimpleName()), NANO, System.nanoTime() - start);
+                }
+            }
+
+            planChecker.validateFinalPlan(root, session, metadata, sqlParser, TypeProvider.viewOf(variableAllocator.getVariables()), warningCollector);
+        }
+
         if (stage.ordinal() >= OPTIMIZED.ordinal()) {
             for (PlanOptimizer optimizer : planOptimizers) {
                 if (Thread.currentThread().isInterrupted()) {
