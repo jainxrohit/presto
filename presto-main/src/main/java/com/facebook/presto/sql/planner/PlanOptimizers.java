@@ -304,7 +304,6 @@ public class PlanOptimizers
                         ImmutableSet.<Rule<?>>builder()
                                 .addAll(new InlineSqlFunctions(metadata, sqlParser).rules())
                                 .addAll(new DesugarLambdaExpression().rules())
-                                .addAll(new SimplifyCardinalityMap().rules())
                                 .build()),
                 // TODO: move this before optimization if possible!!
                 // Replace all expressions with row expressions
@@ -314,6 +313,11 @@ public class PlanOptimizers
                         costCalculator,
                         new TranslateExpressions(metadata, sqlParser).rules()),
                 // After this point, all planNodes should not contain OriginalExpression
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        new SimplifyCardinalityMap().rules()),
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,
