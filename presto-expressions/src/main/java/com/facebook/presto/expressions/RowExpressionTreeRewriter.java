@@ -23,6 +23,7 @@ import com.facebook.presto.spi.relation.QuantifiedComparisonExpression;
 import com.facebook.presto.spi.relation.RowExpression;
 import com.facebook.presto.spi.relation.RowExpressionVisitor;
 import com.facebook.presto.spi.relation.SpecialFormExpression;
+import com.facebook.presto.spi.relation.UnresolvedSymbolExpression;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
 
 import java.util.ArrayList;
@@ -230,6 +231,19 @@ public final class RowExpressionTreeRewriter<C>
             if (existsExpression.getSubquery() != subquery) {
                 return new ExistsExpression(existsExpression.getSourceLocation(), subquery);
             }
+            return existsExpression;
+        }
+
+        @Override
+        public RowExpression visitUnresolvedSymbolExpression(UnresolvedSymbolExpression existsExpression, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                RowExpression result = rewriter.rewriteRowExpression(existsExpression, context.get(), RowExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
             return existsExpression;
         }
     }
