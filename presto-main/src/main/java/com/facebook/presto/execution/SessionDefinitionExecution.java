@@ -68,14 +68,14 @@ public class SessionDefinitionExecution<T extends Statement>
         private final TransactionManager transactionManager;
         private final Metadata metadata;
         private final AccessControl accessControl;
-        private final Map<Class<? extends Statement>, DataDefinitionTask<?>> tasks;
+        private final Map<Class<? extends Statement>, DataDefinitionTask> tasks;
 
         @Inject
         public SessionDefinitionExecutionFactory(
                 TransactionManager transactionManager,
                 MetadataManager metadata,
                 AccessControl accessControl,
-                Map<Class<? extends Statement>, DataDefinitionTask<?>> tasks)
+                Map<Class<? extends Statement>, DataDefinitionTask> tasks)
         {
             this.transactionManager = requireNonNull(transactionManager, "transactionManager is null");
             this.metadata = requireNonNull(metadata, "metadata is null");

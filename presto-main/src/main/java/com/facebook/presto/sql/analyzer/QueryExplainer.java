@@ -68,7 +68,7 @@ public class QueryExplainer
     private final SqlParser sqlParser;
     private final StatsCalculator statsCalculator;
     private final CostCalculator costCalculator;
-    private final Map<Class<? extends Statement>, DataDefinitionTask<?>> dataDefinitionTask;
+    private final Map<Class<? extends Statement>, DataDefinitionTask> dataDefinitionTask;
     private final PlanChecker planChecker;
 
     @Inject
@@ -80,7 +80,7 @@ public class QueryExplainer
             SqlParser sqlParser,
             StatsCalculator statsCalculator,
             CostCalculator costCalculator,
-            Map<Class<? extends Statement>, DataDefinitionTask<?>> dataDefinitionTask,
+            Map<Class<? extends Statement>, DataDefinitionTask> dataDefinitionTask,
             PlanChecker planChecker)
     {
         this(
@@ -103,7 +103,7 @@ public class QueryExplainer
             SqlParser sqlParser,
             StatsCalculator statsCalculator,
             CostCalculator costCalculator,
-            Map<Class<? extends Statement>, DataDefinitionTask<?>> dataDefinitionTask,
+            Map<Class<? extends Statement>, DataDefinitionTask> dataDefinitionTask,
             PlanChecker planChecker)
     {
         this.planOptimizers = requireNonNull(planOptimizers, "planOptimizers is null");
@@ -125,7 +125,7 @@ public class QueryExplainer
 
     public String getPlan(Session session, Statement statement, Type planType, List<Expression> parameters, boolean verbose, WarningCollector warningCollector)
     {
-        DataDefinitionTask<?> task = dataDefinitionTask.get(statement.getClass());
+        DataDefinitionTask task = dataDefinitionTask.get(statement.getClass());
         if (task != null) {
             return explainTask(statement, task, parameters);
         }
@@ -143,14 +143,14 @@ public class QueryExplainer
         throw new IllegalArgumentException("Unhandled plan type: " + planType);
     }
 
-    private static <T extends Statement> String explainTask(Statement statement, DataDefinitionTask<T> task, List<Expression> parameters)
+    private static <T extends Statement> String explainTask(Statement statement, DataDefinitionTask task, List<Expression> parameters)
     {
-        return task.explain((T) statement, parameters);
+        return task.explain(statement, parameters);
     }
 
     public String getGraphvizPlan(Session session, Statement statement, Type planType, List<Expression> parameters, WarningCollector warningCollector)
     {
-        DataDefinitionTask<?> task = dataDefinitionTask.get(statement.getClass());
+        DataDefinitionTask task = dataDefinitionTask.get(statement.getClass());
         if (task != null) {
             // todo format as graphviz
             return explainTask(statement, task, parameters);
@@ -169,7 +169,7 @@ public class QueryExplainer
 
     public String getJsonPlan(Session session, Statement statement, Type planType, List<Expression> parameters, WarningCollector warningCollector)
     {
-        DataDefinitionTask<?> task = dataDefinitionTask.get(statement.getClass());
+        DataDefinitionTask task = dataDefinitionTask.get(statement.getClass());
         if (task != null) {
             // todo format as json
             return explainTask(statement, task, parameters);

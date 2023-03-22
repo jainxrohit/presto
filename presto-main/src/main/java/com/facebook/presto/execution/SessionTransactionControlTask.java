@@ -27,7 +27,7 @@ import java.util.List;
  * @param <T>
  */
 public interface SessionTransactionControlTask<T extends Statement>
-        extends DataDefinitionTask<T>
+        extends DataDefinitionTask
 {
     ListenableFuture<?> execute(T statement, TransactionManager transactionManager, Metadata metadata,
                                 AccessControl accessControl, QueryStateMachine stateMachine,

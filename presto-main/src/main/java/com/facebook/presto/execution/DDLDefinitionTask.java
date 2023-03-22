@@ -25,7 +25,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.List;
 
 public interface DDLDefinitionTask<T extends Statement>
-        extends DataDefinitionTask<T>
+        extends DataDefinitionTask
 {
     ListenableFuture<?> execute(T statement, TransactionManager transactionManager, Metadata metadata,
                                 AccessControl accessControl, Session session, List<Expression> parameters,

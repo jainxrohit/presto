@@ -322,7 +322,7 @@ public class LocalQueryRunner
     private final ConnectorManager connectorManager;
     private final HistoryBasedPlanStatisticsManager historyBasedPlanStatisticsManager;
     private final PluginManager pluginManager;
-    private final ImmutableMap<Class<? extends Statement>, DataDefinitionTask<?>> dataDefinitionTask;
+    private final ImmutableMap<Class<? extends Statement>, DataDefinitionTask> dataDefinitionTask;
 
     private final boolean alwaysRevokeMemory;
     private final NodeSpillConfig nodeSpillConfig;
@@ -532,7 +532,7 @@ public class LocalQueryRunner
                 defaultSession.getTracer(),
                 defaultSession.getWarningCollector());
 
-        dataDefinitionTask = ImmutableMap.<Class<? extends Statement>, DataDefinitionTask<?>>builder()
+        dataDefinitionTask = ImmutableMap.<Class<? extends Statement>, DataDefinitionTask>builder()
                 .put(CreateTable.class, new CreateTableTask())
                 .put(CreateView.class, new CreateViewTask(jsonCodec(ViewDefinition.class), sqlParser, new FeaturesConfig()))
                 .put(CreateMaterializedView.class, new CreateMaterializedViewTask(sqlParser))

@@ -21,11 +21,11 @@ import com.facebook.presto.sql.tree.Statement;
 import java.util.List;
 import java.util.Optional;
 
-public interface DataDefinitionTask<T extends Statement>
+public interface DataDefinitionTask
 {
     String getName();
 
-    default String explain(T statement, List<Expression> parameters)
+    default String explain(Statement statement, List<Expression> parameters)
     {
         if (statement instanceof Prepare) {
             return SqlFormatter.formatSql(statement, Optional.empty());

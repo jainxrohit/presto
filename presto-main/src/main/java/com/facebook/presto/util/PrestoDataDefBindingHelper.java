@@ -98,12 +98,12 @@ public class PrestoDataDefBindingHelper
 {
     private PrestoDataDefBindingHelper(){}
 
-    private static final Map<Class<? extends Statement>, Class<? extends DataDefinitionTask<?>>> STATEMENT_TASK_TYPES;
-    private static final Map<Class<? extends Statement>, Class<? extends DataDefinitionTask<?>>> TRANSACTION_CONTROL_TYPES;
+    private static final Map<Class<? extends Statement>, Class<? extends DataDefinitionTask>> STATEMENT_TASK_TYPES;
+    private static final Map<Class<? extends Statement>, Class<? extends DataDefinitionTask>> TRANSACTION_CONTROL_TYPES;
 
     static {
-        ImmutableMap.Builder<Class<? extends Statement>, Class<? extends DataDefinitionTask<?>>> dataDefBuilder = ImmutableMap.builder();
-        ImmutableMap.Builder<Class<? extends Statement>, Class<? extends DataDefinitionTask<?>>> transactionDefBuilder = ImmutableMap.builder();
+        ImmutableMap.Builder<Class<? extends Statement>, Class<? extends DataDefinitionTask>> dataDefBuilder = ImmutableMap.builder();
+        ImmutableMap.Builder<Class<? extends Statement>, Class<? extends DataDefinitionTask>> transactionDefBuilder = ImmutableMap.builder();
         dataDefBuilder.put(CreateSchema.class, CreateSchemaTask.class);
         dataDefBuilder.put(DropSchema.class, DropSchemaTask.class);
         dataDefBuilder.put(RenameSchema.class, RenameSchemaTask.class);
@@ -145,8 +145,8 @@ public class PrestoDataDefBindingHelper
 
     public static void bindDDLDefinitionTasks(Binder binder)
     {
-        MapBinder<Class<? extends Statement>, DataDefinitionTask<?>> taskBinder = newMapBinder(binder,
-                new TypeLiteral<Class<? extends Statement>>() {}, new TypeLiteral<DataDefinitionTask<?>>() {});
+        MapBinder<Class<? extends Statement>, DataDefinitionTask> taskBinder = newMapBinder(binder,
+                new TypeLiteral<Class<? extends Statement>>() {}, new TypeLiteral<DataDefinitionTask>() {});
 
         STATEMENT_TASK_TYPES.entrySet().stream()
                 .forEach(entry -> taskBinder.addBinding(entry.getKey()).to(entry.getValue()).in(Scopes.SINGLETON));
@@ -154,9 +154,9 @@ public class PrestoDataDefBindingHelper
 
     public static void bindTransactionControlDefinitionTasks(Binder binder)
     {
-        MapBinder<Class<? extends Statement>, DataDefinitionTask<?>> taskBinder = newMapBinder(binder,
+        MapBinder<Class<? extends Statement>, DataDefinitionTask> taskBinder = newMapBinder(binder,
                 new TypeLiteral<Class<? extends Statement>>() {
-                }, new TypeLiteral<DataDefinitionTask<?>>() {
+                }, new TypeLiteral<DataDefinitionTask>() {
                 });
 
         TRANSACTION_CONTROL_TYPES.entrySet().stream()

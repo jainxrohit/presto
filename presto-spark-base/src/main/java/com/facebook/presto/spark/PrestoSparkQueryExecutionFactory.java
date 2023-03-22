@@ -187,7 +187,7 @@ public class PrestoSparkQueryExecutionFactory
     private final FeaturesConfig featuresConfig;
     private final QueryManagerConfig queryManagerConfig;
     private final Set<PrestoSparkServiceWaitTimeMetrics> waitTimeMetrics;
-    private final Map<Class<? extends Statement>, DataDefinitionTask<?>> ddlTasks;
+    private final Map<Class<? extends Statement>, DataDefinitionTask> ddlTasks;
     private final Optional<ErrorClassifier> errorClassifier;
     private final HistoryBasedPlanStatisticsTracker historyBasedPlanStatisticsTracker;
 
@@ -223,7 +223,7 @@ public class PrestoSparkQueryExecutionFactory
             FeaturesConfig featuresConfig,
             QueryManagerConfig queryManagerConfig,
             Set<PrestoSparkServiceWaitTimeMetrics> waitTimeMetrics,
-            Map<Class<? extends Statement>, DataDefinitionTask<?>> ddlTasks,
+            Map<Class<? extends Statement>, DataDefinitionTask> ddlTasks,
             Optional<ErrorClassifier> errorClassifier,
             HistoryBasedPlanStatisticsManager historyBasedPlanStatisticsManager)
     {
