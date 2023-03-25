@@ -30,6 +30,7 @@ import com.facebook.presto.spi.VariableAllocator;
 import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.Assignments;
 import com.facebook.presto.spi.plan.LimitNode;
+import com.facebook.presto.spi.plan.OutputNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.plan.ProjectNode;
@@ -48,7 +49,6 @@ import com.facebook.presto.sql.planner.StatisticsAggregationPlanner.TableStatist
 import com.facebook.presto.sql.planner.iterative.rule.TranslateExpressions;
 import com.facebook.presto.sql.planner.plan.DeleteNode;
 import com.facebook.presto.sql.planner.plan.ExplainAnalyzeNode;
-import com.facebook.presto.sql.planner.plan.OutputNode;
 import com.facebook.presto.sql.planner.plan.StatisticAggregations;
 import com.facebook.presto.sql.planner.plan.StatisticsWriterNode;
 import com.facebook.presto.sql.planner.plan.TableFinishNode;
