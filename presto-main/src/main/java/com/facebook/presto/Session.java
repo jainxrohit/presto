@@ -863,6 +863,7 @@ public final class Session
         private Optional<Duration> cpuTime = Optional.empty();
         private Optional<DataSize> peakMemory = Optional.empty();
         private Optional<DataSize> peakTaskMemory = Optional.empty();
+        private Optional<String> perfClass = Optional.empty();
 
         public ResourceEstimateBuilder setExecutionTime(Duration executionTime)
         {
@@ -888,9 +889,15 @@ public final class Session
             return this;
         }
 
+        public ResourceEstimateBuilder setPerfClass(Optional<String> perfClass)
+        {
+            this.perfClass = perfClass;
+            return this;
+        }
+
         public ResourceEstimates build()
         {
-            return new ResourceEstimates(executionTime, cpuTime, peakMemory, peakTaskMemory);
+            return new ResourceEstimates(executionTime, cpuTime, peakMemory, peakTaskMemory, perfClass);
         }
     }
 }

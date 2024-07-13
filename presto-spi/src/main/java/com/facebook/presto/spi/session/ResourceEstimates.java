@@ -37,11 +37,13 @@ public final class ResourceEstimates
     public static final String CPU_TIME = "CPU_TIME";
     public static final String PEAK_MEMORY = "PEAK_MEMORY";
     public static final String PEAK_TASK_MEMORY = "PEAK_TASK_MEMORY";
+    public static final String PERF_CLASS = "PERF_CLASS";
 
     private final Optional<Duration> executionTime;
     private final Optional<Duration> cpuTime;
     private final Optional<DataSize> peakMemory;
     private final Optional<DataSize> peakTaskMemory;
+    private final Optional<String> perfClass;
 
     @ThriftConstructor
     @JsonCreator
@@ -49,12 +51,14 @@ public final class ResourceEstimates
             @JsonProperty("executionTime") Optional<Duration> executionTime,
             @JsonProperty("cpuTime") Optional<Duration> cpuTime,
             @JsonProperty("peakMemory") Optional<DataSize> peakMemory,
-            @JsonProperty("peakTaskMemory") Optional<DataSize> peakTaskMemory)
+            @JsonProperty("peakTaskMemory") Optional<DataSize> peakTaskMemory,
+            @JsonProperty("peakTaskMemory") Optional<String> perfClass)
     {
         this.executionTime = requireNonNull(executionTime, "executionTime is null");
         this.cpuTime = requireNonNull(cpuTime, "cpuTime is null");
         this.peakMemory = requireNonNull(peakMemory, "peakMemory is null");
         this.peakTaskMemory = requireNonNull(peakTaskMemory, "peakTaskMemory is null");
+        this.perfClass = requireNonNull(perfClass, "perfClass is null");
     }
 
     @ThriftField(1)
@@ -85,6 +89,13 @@ public final class ResourceEstimates
         return peakTaskMemory;
     }
 
+    @ThriftField(5)
+    @JsonProperty
+    public Optional<String> getPerfClass()
+    {
+        return perfClass;
+    }
+
     @Override
     public String toString()
     {
@@ -93,6 +104,7 @@ public final class ResourceEstimates
         sb.append(", cpuTime=").append(cpuTime);
         sb.append(", peakMemory=").append(peakMemory);
         sb.append(", peakTaskMemory=").append(peakTaskMemory);
+        sb.append(", perfClass=").append(perfClass);
         sb.append('}');
         return sb.toString();
     }
