@@ -18,6 +18,7 @@ import com.facebook.presto.metadata.Metadata;
 import com.facebook.presto.spi.WarningCollector;
 import com.facebook.presto.spi.function.FunctionHandle;
 import com.facebook.presto.spi.security.AccessControl;
+import com.facebook.presto.sql.SqlFormatter;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.rewrite.StatementRewrite;
 import com.facebook.presto.sql.tree.Expression;
@@ -110,6 +111,8 @@ public class Analyzer
     public Analysis analyzeSemantic(Statement statement, boolean isDescribe)
     {
         Statement rewrittenStatement = StatementRewrite.rewrite(session, metadata, sqlParser, queryExplainer, statement, parameters, parameterLookup, accessControl, warningCollector);
+        String s = SqlFormatter.formatSql(rewrittenStatement, Optional.empty());
+        System.out.println(s);
         Analysis analysis = new Analysis(rewrittenStatement, parameterLookup, isDescribe);
 
         metadataExtractor.populateMetadataHandle(session, rewrittenStatement, analysis.getMetadataHandle());
